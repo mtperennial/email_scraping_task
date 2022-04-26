@@ -1,0 +1,22 @@
+{
+    "name": "email_scraping",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "nodemon ./src/app.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "app-root-path": "^3.0.0",
+        "chrome-remote-interface": "^0.31.2",
+        "express": "^4.17.3",
+        "puppeteer": "^13.5.2"
+    },
+    "devDependencies": {
+        "chrome-launcher": "^0.15.0"
+    }
+}
