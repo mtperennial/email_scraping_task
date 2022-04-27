@@ -228,7 +228,7 @@ const searchEmail = async (req, res) => {
             await Runtime.evaluate({
                 expression: `
                 console.warn('sender is available');
-                sessionStorage.setItem("queryBasedSearch", 0);
+                sessionStorage.setItem("queryBasedSearch", 0);    // ! sender email is exist instead of query
                 sessionStorage.setItem("response", JSON.stringify([]));
                 var tablesLength = document.getElementsByTagName("table").length
                 document.getElementsByTagName("table")[tablesLength - 2].rows.length;
@@ -249,7 +249,7 @@ const searchEmail = async (req, res) => {
             await Runtime.evaluate({
                 expression: `
                 console.warn('query is available');
-                sessionStorage.setItem("queryBasedSearch", 1);
+                sessionStorage.setItem("queryBasedSearch", 1);   // ! query is exist instead of sender email
                 sessionStorage.setItem("response", JSON.stringify([]));
                 var tablesLength = document.getElementsByTagName("table").length
                 document.getElementsByTagName("table")[tablesLength - 1].rows.length;
