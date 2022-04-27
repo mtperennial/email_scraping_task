@@ -171,71 +171,68 @@ const searchEmail = async (req, res) => {
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error while opening email' });
             });
 
-            // await helper.sleep(8000);
-            // await Runtime.evaluate({
-            //     expression: `
-            //     console.warn("=========================== working ============================")
-            //     let response = JSON.parse(sessionStorage.getItem("response"));
-            //     let emailData = {};
-            //     let div = document.getElementsByClassName("gmail_default")[0];
+            await helper.sleep(8000);
+            await Runtime.evaluate({
+                expression: `
+                console.warn("=========================== working ============================")
+                let response = JSON.parse(sessionStorage.getItem("response"));
+                let emailData = {};
+                let div = document.getElementsByClassName("gmail_default")[0];
 
-            //     emailData.id = Date.now();
-            //     if(div == null || div == undefined) {
-            //         let tbl = document.querySelectorAll("table")[10].querySelector("tr");
-            //         emailData.message = tbl.innerText
-            //     }
-            //     else{
-            //         emailData.message = div.textContent;
-            //     }
-            //     emailData.attachments = [];
+                emailData.id = Date.now();
+                if(div == null || div == undefined) {
+                    let tbl = document.querySelectorAll("table")[10].querySelector("tr");
+                    emailData.message = tbl.innerText
+                }
+                else{
+                    emailData.message = div.textContent;
+                }
+                emailData.attachments = [];
 
-            //     let attachmentsDiv = document.getElementsByClassName("aSH");
-            //     let file = document.getElementsByClassName("N5jrZb")
-            //     console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
+                let attachmentsDiv = document.getElementsByClassName("aSH");
+                let file = document.getElementsByClassName("N5jrZb")
+                console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
 
-            //     if(attachmentsDiv.length > 0) {
+                if(attachmentsDiv.length > 0) {
+                    let attachmentsArr = []
+                    for (let i = 0; i < attachmentsDiv.length; i++) {
+                        let fileObj = {};
+                        let attachment = attachmentsDiv[i].querySelector("span")
+                        // file[i].classList.add("aZp")
+                        fileObj.name = attachment.textContent;
+                        fileObj.url = '${config.emailsDownloadPath}'+'${email}/'+attachment.textContent;
+                        // console.warn('fileObj:', fileObj)
+                        emailData.attachments.push(fileObj);
+                        attachmentsArr.push(file[i].querySelector("a"));
+                    }
+                    console.warn('attachmentsArr:0000000 ======>>>>>>', attachmentsArr)
+                    if (attachmentsArr.length > 0) {
+                        var interval = setInterval(download, 1000, attachmentsArr);
+                        function download(attachmentsArray) {
+                            console.warn('attachmentsArray:11111111=======>>>>>>', attachmentsArray)
+                            var url = attachmentsArray.pop();
+                            var a = document.createElement('a');
+                            a.setAttribute('href', 'url');
+                            a.setAttribute('download', '');
+                            a.setAttribute('target', '_blank');
+                            a.append(url);
+                            a.querySelector('a').click();
+                            if (attachmentsArray.length == 0) {
+                                clearInterval(interval);
+                            }
+                            a.removeChild(url);
+                            a.remove();
+                        }
+                    }
+                }
+                response.push(emailData);
+                sessionStorage.setItem("response", JSON.stringify(response));
 
-            //         let attachmentsArr = []
-
-            //         for (let i = 0; i < attachmentsDiv.length; i++) {
-            //             let fileObj = {};
-            //             let attachment = attachmentsDiv[i].querySelector("span")
-            //             // file[i].classList.add("aZp")
-            //             fileObj.name = attachment.textContent;
-            //             fileObj.url = '${config.emailsDownloadPath}'+'${email}/'+attachment.textContent;
-            //             // console.warn('fileObj:', fileObj)
-            //             emailData.attachments.push(fileObj);
-            //             attachmentsArr.push(file[i].querySelector("a"));
-
-            //         }
-            //         console.warn('attachmentsArr:0000000 ======>>>>>>', attachmentsArr)
-            //         if (attachmentsArr.length > 0) {
-            //             var interval = setInterval(download, 1000, attachmentsArr);
-            //             function download(attachmentsArray) {
-            //                 console.warn('attachmentsArray:11111111=======>>>>>>', attachmentsArray)
-            //                 var url = attachmentsArray.pop();
-            //                 var a = document.createElement('a');
-            //                 a.setAttribute('href', 'url');
-            //                 a.setAttribute('download', '');
-            //                 a.setAttribute('target', '_blank');
-            //                 a.append(url);
-            //                 a.querySelector('a').click();
-            //                 if (attachmentsArray.length == 0) {
-            //                     clearInterval(interval);
-            //                 }
-            //                 a.removeChild(url);
-            //                 a.remove();
-            //             }
-            //         }
-            //     }
-            //     response.push(emailData);
-            //     sessionStorage.setItem("response", JSON.stringify(response));
-
-            // `,
-            // }).catch((err) => {
-            //     CDP.Close({ id: tabId, port: port });
-            //     return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error in scrap the email' });
-            // });
+            `,
+            }).catch((err) => {
+                CDP.Close({ id: tabId, port: port });
+                return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error in scrap the email' });
+            });
 
             await helper.sleep(5000);
             await Runtime.evaluate({
@@ -348,9 +345,7 @@ const searchEmail = async (req, res) => {
                 console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
 
                 if(attachmentsDiv.length > 0) {
-
                     let attachmentsArr = []
-
                     for (let i = 0; i < attachmentsDiv.length; i++) {
                         let fileObj = {};
                         let attachment = attachmentsDiv[i].querySelector("span")
@@ -360,7 +355,6 @@ const searchEmail = async (req, res) => {
                         // console.warn('fileObj:', fileObj)
                         emailData.attachments.push(fileObj);
                         attachmentsArr.push(file[i].querySelector("a"));
-
                     }
                     console.warn('attachmentsArr:0000000 ======>>>>>>', attachmentsArr)
                     if (attachmentsArr.length > 0) {
