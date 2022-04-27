@@ -138,7 +138,7 @@ const searchEmail = async (req, res) => {
         downloadPath: config.emailsDownloadPath + '/' + email + '/',
     });
 
-    // ! if query is empty then search for all emails
+    // ! if query is empty then search for all unread emails
     if (query === undefined || query === '') {
         console.log("query is undefined");
         let unReadEmails;
@@ -176,61 +176,7 @@ const searchEmail = async (req, res) => {
             await helper.sleep(8000);
             await Runtime.evaluate({
                 expression: `
-                console.warn("================== working =====================")
-                var response = JSON.parse(sessionStorage.getItem("response"));
-                var emailData = {};
-                var div = document.getElementsByClassName("gmail_default")[0];
-
-                emailData.id = Date.now();
-                if(div == null || div == undefined) {
-                    let tbl = document.querySelectorAll("table")[10].querySelector("tr");
-                    emailData.message = tbl.innerText
-                }
-                else{
-                    emailData.message = div.textContent;
-                }
-                emailData.attachmentsCount = 0;
-                emailData.attachments = [];
-
-                var attachmentsDiv = document.getElementsByClassName("aSH");
-                var file = document.getElementsByClassName("N5jrZb")
-                console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
-
-                if(attachmentsDiv.length > 0) {
-                    var attachmentsArr = []
-                    for (let i = 0; i < attachmentsDiv.length; i++) {
-                        var fileObj = {};
-                        var attachment = attachmentsDiv[i].querySelector("span")
-                        // file[i].classList.add("aZp")
-                        fileObj.name = attachment.textContent;
-                        fileObj.url = '${config.emailsDownloadPath}'+'${email}/'+attachment.textContent;
-                        emailData.attachments.push(fileObj);
-                        attachmentsArr.push(file[i].querySelector("a"));
-                    }
-
-                    if (attachmentsArr.length > 0) {
-                        var interval = setInterval(download, 1000, attachmentsArr);
-                        function download(attachmentsArray) {
-                            console.warn('attachmentsArray:11111111=======>>>>>>', attachmentsArray)
-                            var url = attachmentsArray.pop();
-                            var a = document.createElement('a');
-                            a.setAttribute('href', 'url');
-                            a.setAttribute('download', '');
-                            a.setAttribute('target', '_blank');
-                            a.append(url);
-                            a.querySelector('a').click();
-                            if (attachmentsArray.length == 0) {
-                                clearInterval(interval);
-                            }
-                            a.removeChild(url);
-                            a.remove();
-                        }
-                    }
-                }
-                emailData.attachmentsCount = emailData.attachments.length;  // ! to check how many attachments are there
-                response.push(emailData);
-                sessionStorage.setItem("response", JSON.stringify(response));
-
+                ${helper.getEmailContent(email)}
             `,
             }).catch((err) => {
                 CDP.Close({ id: tabId, port: port });
@@ -256,7 +202,6 @@ const searchEmail = async (req, res) => {
             expression: `
             const changeEvent = new Event('change');
             var inputElem = document.getElementsByClassName("gb_ef")[1];
-            console.warn('query is not empty');
             inputElem.value = '${query}';
             inputElem.dispatchEvent(changeEvent);
         `,
@@ -276,43 +221,69 @@ const searchEmail = async (req, res) => {
             return res.status(400).json({ status_cd: 'error', message: err.message });
         });
 
-        await helper.sleep(2000);
-        await Runtime.evaluate({
-            expression: `
-            var searchBtn = document.getElementsByClassName("gb_nf")[0]
-            searchBtn.click();
-        `,
-        }).catch((err) => {
-            CDP.Close({ id: tabId, port: port });
-            return res.status(400).json({ status_cd: 'error', message: err.message });
-        });
-
         let tableRows;
-        await helper.sleep();
-        await Runtime.evaluate({
-            expression: `
-	        sessionStorage.setItem("response", JSON.stringify([]));
-	        var tablesLength = document.getElementsByTagName("table").length
-	        document.getElementsByTagName("table")[tablesLength - 1].rows.length;
-	    `,
-        })
-            .then((res) => {
-                tableRows = res.result.value;
-                console.log('tableRows:', tableRows)
+        // ! if sender email is present then search for all emails for the particular sender
+        if (query.includes(".com", "@")) {
+            await helper.sleep();
+            await Runtime.evaluate({
+                expression: `
+                console.warn('sender is not empty');
+                sessionStorage.setItem("queryBasedSearch", 0);
+                sessionStorage.setItem("response", JSON.stringify([]));
+                var tablesLength = document.getElementsByTagName("table").length
+                document.getElementsByTagName("table")[tablesLength - 2].rows.length;
+	        `,
             })
-            .catch((err) => {
-                CDP.Close({ id: tabId, port: port });
-                return res.status(400).json({ status_cd: 'error', message: err.message });
-            });
+                .then((res) => {
+                    tableRows = res.result.value;
+                    console.log('tableRows:', tableRows)
+                })
+                .catch((err) => {
+                    CDP.Close({ id: tabId, port: port });
+                    return res.status(400).json({ status_cd: 'error', message: err.message });
+                });
+        }
+        // ! if sender email is not present then search for all emails by query
+        else {
+            await helper.sleep();
+            await Runtime.evaluate({
+                expression: `
+                console.warn('query is not empty');
+                sessionStorage.setItem("queryBasedSearch", 1);
+                sessionStorage.setItem("response", JSON.stringify([]));
+                var tablesLength = document.getElementsByTagName("table").length
+                document.getElementsByTagName("table")[tablesLength - 1].rows.length;
+            `,
+            })
+                .then((res) => {
+                    tableRows = res.result.value;
+                    console.log('tableRows:', tableRows)
+                })
+                .catch((err) => {
+                    CDP.Close({ id: tabId, port: port });
+                    return res.status(400).json({ status_cd: 'error', message: err.message });
+                });
+        }
+
+        let skipHistoryBack = 0;
         for (let i = 0; i < tableRows; i++) {
             let isBack;
             await helper.sleep(3000);
             await Runtime.evaluate({
                 expression: `
                 console.log("next time", ${i})
-                var table = document.getElementsByTagName("table")
-                console.log('table:', table)
-	            var tableRows = document.getElementsByTagName("table")[table.length - 1];
+                var table = document.querySelectorAll("table")
+                
+                var queryBasedSearch = sessionStorage.getItem("queryBasedSearch");
+                var tableRows;
+                if(queryBasedSearch == 1){
+                    console.warn("queryBasedSearch == 1");
+                    tableRows = document.querySelectorAll("table")[table.length - 1];
+                }
+                else{
+                    console.warn("queryBasedSearch == 0");
+                    tableRows = document.querySelectorAll("table")[table.length - 2];
+                }
 	            console.log('tableRows:', tableRows)
                 if(tableRows.rows['${i}'].classList.contains("zE")){   // ! class zE to check for email is unread then open it
                     tableRows.rows['${i}'].click()
@@ -327,61 +298,7 @@ const searchEmail = async (req, res) => {
             await helper.sleep(8000);
             await Runtime.evaluate({
                 expression: `
-	            console.warn("=================== working ======================")
-                var response = JSON.parse(sessionStorage.getItem("response"));
-                var emailData = {};
-                var div = document.getElementsByClassName("gmail_default")[0];
-
-                emailData.id = Date.now();
-                if(div == null || div == undefined) {
-                    var tbl = document.querySelectorAll("table")[10].querySelector("tr");
-                    emailData.message = tbl.innerText
-                }
-                else{
-                    emailData.message = div.textContent;
-                }
-                emailData.attachmentsCount = 0;
-                emailData.attachments = [];
-
-                var attachmentsDiv = document.getElementsByClassName("aSH");
-                var file = document.getElementsByClassName("N5jrZb")
-                console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
-
-                if(attachmentsDiv.length > 0) {
-                    var attachmentsArr = []
-                    for (var i = 0; i < attachmentsDiv.length; i++) {
-                        var fileObj = {};
-                        var attachment = attachmentsDiv[i].querySelector("span")
-                        // file[i].classList.add("aZp")
-                        fileObj.name = attachment.textContent;
-                        fileObj.url = '${config.emailsDownloadPath}'+'${email}/'+attachment.textContent;
-                        // console.warn('fileObj:', fileObj)
-                        emailData.attachments.push(fileObj);
-                        attachmentsArr.push(file[i].querySelector("a"));
-                    }
-
-                    if (attachmentsArr.length > 0) {
-                        var interval = setInterval(download, 1000, attachmentsArr);
-                        function download(attachmentsArray) {
-                            console.warn('attachmentsArray:11111111=======>>>>>>', attachmentsArray)
-                            var url = attachmentsArray.pop();
-                            var a = document.createElement('a');
-                            a.setAttribute('href', 'url');
-                            a.setAttribute('download', '');
-                            a.setAttribute('target', '_blank');
-                            a.append(url);
-                            a.querySelector('a').click();
-                            if (attachmentsArray.length == 0) {
-                                clearInterval(interval);
-                            }
-                            a.removeChild(url);
-                            a.remove();
-                        }
-                    }
-                }
-                emailData.attachmentsCount = emailData.attachments.length;  // ! to check how many attachments are there
-	            response.push(emailData);
-	            sessionStorage.setItem("response", JSON.stringify(response));
+	            ${helper.getEmailContent(email)}
 	        `,
             }).catch((err) => {
                 CDP.Close({ id: tabId, port: port });
@@ -413,9 +330,10 @@ const searchEmail = async (req, res) => {
                 });
             }
             else {
-                console.log('skip history.back()');
+                skipHistoryBack++;
             }
         }
+        console.log('skipHistoryBack:', skipHistoryBack)
     }
 
     await helper.sleep(3000);
