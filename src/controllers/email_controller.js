@@ -227,7 +227,7 @@ const searchEmail = async (req, res) => {
             await helper.sleep();
             await Runtime.evaluate({
                 expression: `
-                console.warn('sender is not empty');
+                console.warn('sender is available');
                 sessionStorage.setItem("queryBasedSearch", 0);
                 sessionStorage.setItem("response", JSON.stringify([]));
                 var tablesLength = document.getElementsByTagName("table").length
@@ -248,7 +248,7 @@ const searchEmail = async (req, res) => {
             await helper.sleep();
             await Runtime.evaluate({
                 expression: `
-                console.warn('query is not empty');
+                console.warn('query is available');
                 sessionStorage.setItem("queryBasedSearch", 1);
                 sessionStorage.setItem("response", JSON.stringify([]));
                 var tablesLength = document.getElementsByTagName("table").length
