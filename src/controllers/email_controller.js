@@ -119,7 +119,9 @@ const loginEmail = async (req, res) => {
     return res.status(200).json({ tabId: tab.id, port: chromePort, pid: chrome.pid });
 };
 
-// API for searching email
+/**--------------------------------
+ * !  API for searching emails
+ *-------------------------------**/
 const searchEmail = async (req, res) => {
     const { email, tabId, port, pid, query } = req.body;
 
@@ -155,17 +157,17 @@ const searchEmail = async (req, res) => {
             });
 
         await helper.sleep(2000);
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < unReadEmails; i++) {
             console.log('i: ==>', i);
 
-            await helper.sleep(6000);
+            await helper.sleep(3000);
             await Runtime.evaluate({
                 expression: `
-                let unReadEmail = document.getElementsByClassName("zE");
+                var unReadEmail = document.getElementsByClassName("zE");
                 console.log('unReadEmail:', unReadEmail, 'unReadEmail.length:', unReadEmail.length)
                 unReadEmail[0].click();
                 console.warn("clicked", ${i});
-	    `,
+            `,
             }).catch((err) => {
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error while opening email' });
@@ -174,10 +176,10 @@ const searchEmail = async (req, res) => {
             await helper.sleep(8000);
             await Runtime.evaluate({
                 expression: `
-                console.warn("=========================== working ============================")
-                let response = JSON.parse(sessionStorage.getItem("response"));
-                let emailData = {};
-                let div = document.getElementsByClassName("gmail_default")[0];
+                console.warn("================== working =====================")
+                var response = JSON.parse(sessionStorage.getItem("response"));
+                var emailData = {};
+                var div = document.getElementsByClassName("gmail_default")[0];
 
                 emailData.id = Date.now();
                 if(div == null || div == undefined) {
@@ -187,25 +189,25 @@ const searchEmail = async (req, res) => {
                 else{
                     emailData.message = div.textContent;
                 }
+                emailData.attachmentsCount = 0;
                 emailData.attachments = [];
 
-                let attachmentsDiv = document.getElementsByClassName("aSH");
-                let file = document.getElementsByClassName("N5jrZb")
+                var attachmentsDiv = document.getElementsByClassName("aSH");
+                var file = document.getElementsByClassName("N5jrZb")
                 console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
 
                 if(attachmentsDiv.length > 0) {
-                    let attachmentsArr = []
+                    var attachmentsArr = []
                     for (let i = 0; i < attachmentsDiv.length; i++) {
-                        let fileObj = {};
-                        let attachment = attachmentsDiv[i].querySelector("span")
+                        var fileObj = {};
+                        var attachment = attachmentsDiv[i].querySelector("span")
                         // file[i].classList.add("aZp")
                         fileObj.name = attachment.textContent;
                         fileObj.url = '${config.emailsDownloadPath}'+'${email}/'+attachment.textContent;
-                        // console.warn('fileObj:', fileObj)
                         emailData.attachments.push(fileObj);
                         attachmentsArr.push(file[i].querySelector("a"));
                     }
-                    console.warn('attachmentsArr:0000000 ======>>>>>>', attachmentsArr)
+
                     if (attachmentsArr.length > 0) {
                         var interval = setInterval(download, 1000, attachmentsArr);
                         function download(attachmentsArray) {
@@ -225,6 +227,7 @@ const searchEmail = async (req, res) => {
                         }
                     }
                 }
+                emailData.attachmentsCount = emailData.attachments.length;  // ! to check how many attachments are there
                 response.push(emailData);
                 sessionStorage.setItem("response", JSON.stringify(response));
 
@@ -234,7 +237,7 @@ const searchEmail = async (req, res) => {
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error in scrap the email' });
             });
 
-            await helper.sleep(5000);
+            await helper.sleep(3000);
             await Runtime.evaluate({
                 expression: `
                 history.back();
@@ -252,7 +255,7 @@ const searchEmail = async (req, res) => {
         await Runtime.evaluate({
             expression: `
             const changeEvent = new Event('change');
-            let inputElem = document.getElementsByClassName("gb_ef")[1];
+            var inputElem = document.getElementsByClassName("gb_ef")[1];
             console.warn('query is not empty');
             inputElem.value = '${query}';
             inputElem.dispatchEvent(changeEvent);
@@ -265,7 +268,7 @@ const searchEmail = async (req, res) => {
         await helper.sleep(2000);
         await Runtime.evaluate({
             expression: `
-            let searchBtn = document.getElementsByClassName("gb_nf")[0]
+            var searchBtn = document.getElementsByClassName("gb_nf")[0]
             searchBtn.click();
         `,
         }).catch((err) => {
@@ -276,7 +279,7 @@ const searchEmail = async (req, res) => {
         await helper.sleep(2000);
         await Runtime.evaluate({
             expression: `
-            let searchBtn = document.getElementsByClassName("gb_nf")[0]
+            var searchBtn = document.getElementsByClassName("gb_nf")[0]
             searchBtn.click();
         `,
         }).catch((err) => {
@@ -284,11 +287,12 @@ const searchEmail = async (req, res) => {
             return res.status(400).json({ status_cd: 'error', message: err.message });
         });
 
+        let tableRows;
         await helper.sleep();
         await Runtime.evaluate({
             expression: `
 	        sessionStorage.setItem("response", JSON.stringify([]));
-	        let tablesLength = document.getElementsByTagName("table").length
+	        var tablesLength = document.getElementsByTagName("table").length
 	        document.getElementsByTagName("table")[tablesLength - 1].rows.length;
 	    `,
         })
@@ -300,55 +304,54 @@ const searchEmail = async (req, res) => {
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
-
-        for (let i = 0; i < 3; i++) {
-            await helper.sleep(10000);
+        for (let i = 0; i < tableRows; i++) {
+            let isBack;
+            await helper.sleep(3000);
             await Runtime.evaluate({
                 expression: `
                 console.log("next time", ${i})
-                let table = document.getElementsByTagName("table")
+                var table = document.getElementsByTagName("table")
                 console.log('table:', table)
-	            let tableRows = document.getElementsByTagName("table")[table.length - 1];
+	            var tableRows = document.getElementsByTagName("table")[table.length - 1];
 	            console.log('tableRows:', tableRows)
-                let res = JSON.parse(sessionStorage.getItem("response"));
-                console.log('res length =====>>>>>>', res.length)
                 if(tableRows.rows['${i}'].classList.contains("zE")){   // ! class zE to check for email is unread then open it
                     tableRows.rows['${i}'].click()
+                    sessionStorage.setItem("isBack", 1);  // ! if email is open then need to back to previous page
                 }
-
-	    `,
+	        `,
             }).catch((err) => {
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
 
-            await helper.sleep();
+            await helper.sleep(8000);
             await Runtime.evaluate({
                 expression: `
-	            console.warn("=========================== working ============================")
-                let response = JSON.parse(sessionStorage.getItem("response"));
-                let emailData = {};
-                let div = document.getElementsByClassName("gmail_default")[0];
+	            console.warn("=================== working ======================")
+                var response = JSON.parse(sessionStorage.getItem("response"));
+                var emailData = {};
+                var div = document.getElementsByClassName("gmail_default")[0];
 
                 emailData.id = Date.now();
                 if(div == null || div == undefined) {
-                    let tbl = document.querySelectorAll("table")[10].querySelector("tr");
+                    var tbl = document.querySelectorAll("table")[10].querySelector("tr");
                     emailData.message = tbl.innerText
                 }
                 else{
                     emailData.message = div.textContent;
                 }
+                emailData.attachmentsCount = 0;
                 emailData.attachments = [];
 
-                let attachmentsDiv = document.getElementsByClassName("aSH");
-                let file = document.getElementsByClassName("N5jrZb")
+                var attachmentsDiv = document.getElementsByClassName("aSH");
+                var file = document.getElementsByClassName("N5jrZb")
                 console.warn('attachmentsDiv:===>>>>', attachmentsDiv)
 
                 if(attachmentsDiv.length > 0) {
-                    let attachmentsArr = []
-                    for (let i = 0; i < attachmentsDiv.length; i++) {
-                        let fileObj = {};
-                        let attachment = attachmentsDiv[i].querySelector("span")
+                    var attachmentsArr = []
+                    for (var i = 0; i < attachmentsDiv.length; i++) {
+                        var fileObj = {};
+                        var attachment = attachmentsDiv[i].querySelector("span")
                         // file[i].classList.add("aZp")
                         fileObj.name = attachment.textContent;
                         fileObj.url = '${config.emailsDownloadPath}'+'${email}/'+attachment.textContent;
@@ -356,7 +359,7 @@ const searchEmail = async (req, res) => {
                         emailData.attachments.push(fileObj);
                         attachmentsArr.push(file[i].querySelector("a"));
                     }
-                    console.warn('attachmentsArr:0000000 ======>>>>>>', attachmentsArr)
+
                     if (attachmentsArr.length > 0) {
                         var interval = setInterval(download, 1000, attachmentsArr);
                         function download(attachmentsArray) {
@@ -376,24 +379,42 @@ const searchEmail = async (req, res) => {
                         }
                     }
                 }
+                emailData.attachmentsCount = emailData.attachments.length;  // ! to check how many attachments are there
 	            response.push(emailData);
 	            sessionStorage.setItem("response", JSON.stringify(response));
-	    `,
+	        `,
             }).catch((err) => {
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
 
-            await helper.sleep(5000);
+            await helper.sleep(2000)
             await Runtime.evaluate({
                 expression: `
-                history.back();
-                console.log('back', ${i})
-		`,
+                    sessionStorage.getItem("isBack");
+                    `,
+            }).then(res => {
+                isBack = res.result.value;
             }).catch((err) => {
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
+            if (isBack == 1) {
+                await helper.sleep(3000);
+                await Runtime.evaluate({
+                    expression: `
+                    sessionStorage.setItem("isBack", 0);
+                    history.back();
+                    console.log('history.back()', ${i})
+                    `,
+                }).catch((err) => {
+                    CDP.Close({ id: tabId, port: port });
+                    return res.status(400).json({ status_cd: 'error', message: err.message });
+                });
+            }
+            else {
+                console.log('skip history.back()');
+            }
         }
     }
 
@@ -404,7 +425,7 @@ const searchEmail = async (req, res) => {
         .then((resp) => {
             let response = JSON.parse(resp.result.value);
             console.log(response);
-            return res.status(200).json({ status: 'success', response });
+            return res.status(200).json({ status: 'success', emailsCount: response.length, data: response });
         })
         .catch((err) => {
             console.log(err);
