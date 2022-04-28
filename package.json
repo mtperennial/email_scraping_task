@@ -14,7 +14,8 @@
         "app-root-path": "^3.0.0",
         "chrome-remote-interface": "^0.31.2",
         "express": "^4.17.3",
-        "puppeteer": "^13.5.2"
+        "puppeteer": "^13.5.2",
+        "winston": "^3.7.2"
     },
     "devDependencies": {
         "chrome-launcher": "^0.15.0"

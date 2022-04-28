@@ -4,6 +4,7 @@ const appRoot = require('app-root-path');
 const config = require(appRoot + '/config.json');
 const helper = require('../utils/helper');
 const fs = require('fs');
+const logger = require('../loggers');
 
 /* NOTE:
     1. default time of sleep is 3000ms
@@ -37,7 +38,7 @@ const loginEmail = async (req, res) => {
     const tab = await CDP.New({
         port: chromePort,
     }).catch((err) => {
-        console.log(err);
+        logger.error(err.message);
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
 
@@ -52,7 +53,7 @@ const loginEmail = async (req, res) => {
         Page.loadEventFired(),
         DOM.enable(),
     ]).catch((err) => {
-        console.log(err);
+        logger.error(err.message);
         CDP.Close({ id: tab.id, port: chromePort });
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
@@ -66,6 +67,7 @@ const loginEmail = async (req, res) => {
             email.dispatchEvent(changeEvent);
         `,
     }).catch((err) => {
+        logger.error(err.message);
         CDP.Close({ id: tab.id, port: chromePort });
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
@@ -77,6 +79,7 @@ const loginEmail = async (req, res) => {
             nextBtn.click();
         `,
     }).catch((err) => {
+        logger.error(err.message);
         CDP.Close({ id: tab.id, port: chromePort });
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
@@ -90,6 +93,7 @@ const loginEmail = async (req, res) => {
             password.dispatchEvent(changeEvent);
         `,
     }).catch((err) => {
+        logger.error(err.message);
         CDP.Close({ id: tab.id, port: chromePort });
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
@@ -101,6 +105,7 @@ const loginEmail = async (req, res) => {
             checkbox.click();
         `,
     }).catch((err) => {
+        logger.error(err.message);
         CDP.Close({ id: tab.id, port: chromePort });
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
@@ -112,11 +117,29 @@ const loginEmail = async (req, res) => {
             submitBtn.click();
         `,
     }).catch((err) => {
+        logger.error(err.message);
         CDP.Close({ id: tab.id, port: chromePort });
         return res.status(400).json({ status_cd: 'error', message: err.message });
     });
 
+    await helper.sleep(2000);
+    let getCurrentURL = await Runtime.evaluate({
+        expression: 'window.location.href;',
+    });
+
+    if (getCurrentURL.result.value === config.login_failed) {
+        CDP.Close({ id: tab.id, port: chromePort });
+        logger.info({
+            status_cd: 'error',
+            message: 'Invalid Username or Password. Please try again.',
+        });
+        return res.status(400).json({
+            status_cd: 'error',
+            message: 'Invalid Username or Password. Please try again.',
+        });
+    }
     return res.status(200).json({ tabId: tab.id, port: chromePort, pid: chrome.pid });
+
 };
 
 /**--------------------------------
@@ -152,13 +175,13 @@ const searchEmail = async (req, res) => {
                 unReadEmails = res.result.value;
             })
             .catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error while targeting the email container' });
             });
 
         await helper.sleep(2000);
         for (let i = 0; i < unReadEmails; i++) {
-            console.log('i: ==>', i);
 
             await helper.sleep(3000);
             await Runtime.evaluate({
@@ -169,6 +192,7 @@ const searchEmail = async (req, res) => {
                 console.warn("clicked", ${i});
             `,
             }).catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error while opening email' });
             });
@@ -179,6 +203,7 @@ const searchEmail = async (req, res) => {
                 ${helper.getEmailContent(email)}
             `,
             }).catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error in scrap the email' });
             });
@@ -190,6 +215,7 @@ const searchEmail = async (req, res) => {
                 console.warn("history.back() ===>>>>>", ${i})
         `,
             }).catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error in history.back()' });
             });
@@ -206,6 +232,7 @@ const searchEmail = async (req, res) => {
             inputElem.dispatchEvent(changeEvent);
         `,
         }).catch((err) => {
+            logger.error(err.message);
             CDP.Close({ id: tabId, port: port });
             return res.status(400).json({ status_cd: 'error', message: err.message });
         });
@@ -217,6 +244,7 @@ const searchEmail = async (req, res) => {
             searchBtn.click();
         `,
         }).catch((err) => {
+            logger.error(err.message);
             CDP.Close({ id: tabId, port: port });
             return res.status(400).json({ status_cd: 'error', message: err.message });
         });
@@ -239,6 +267,7 @@ const searchEmail = async (req, res) => {
                     console.log('tableRows:', tableRows)
                 })
                 .catch((err) => {
+                    logger.error(err.message);
                     CDP.Close({ id: tabId, port: port });
                     return res.status(400).json({ status_cd: 'error', message: err.message });
                 });
@@ -260,6 +289,7 @@ const searchEmail = async (req, res) => {
                     console.log('tableRows:', tableRows)
                 })
                 .catch((err) => {
+                    logger.error(err.message);
                     CDP.Close({ id: tabId, port: port });
                     return res.status(400).json({ status_cd: 'error', message: err.message });
                 });
@@ -291,6 +321,7 @@ const searchEmail = async (req, res) => {
                 }
 	        `,
             }).catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
@@ -301,6 +332,7 @@ const searchEmail = async (req, res) => {
 	            ${helper.getEmailContent(email)}
 	        `,
             }).catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
@@ -313,6 +345,7 @@ const searchEmail = async (req, res) => {
             }).then(res => {
                 isBack = res.result.value;
             }).catch((err) => {
+                logger.error(err.message);
                 CDP.Close({ id: tabId, port: port });
                 return res.status(400).json({ status_cd: 'error', message: err.message });
             });
@@ -325,6 +358,7 @@ const searchEmail = async (req, res) => {
                     console.log('history.back()', ${i})
                     `,
                 }).catch((err) => {
+                    logger.error(err.message);
                     CDP.Close({ id: tabId, port: port });
                     return res.status(400).json({ status_cd: 'error', message: err.message });
                 });
@@ -342,11 +376,11 @@ const searchEmail = async (req, res) => {
     })
         .then((resp) => {
             let response = JSON.parse(resp.result.value);
-            console.log(response);
+            // console.log(response);
             return res.status(200).json({ status: 'success', emailsCount: response.length, data: response });
         })
         .catch((err) => {
-            console.log(err);
+            logger.error(err.message);
             return res.status(400).json({ status_cd: 'error', message: err.message, msg: 'error in sending response' });
         });
 };
